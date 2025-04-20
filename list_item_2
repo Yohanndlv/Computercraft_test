@@ -1,80 +1,26 @@
--- Initialisation
-local monitor
-local chests = {}
-local lines = {}
-local scrollPos = 0
-
--- Récupération du monitor et des coffres
-for _, name in ipairs(peripheral.getNames()) do
-    local pType = peripheral.getType(name)
-    if pType == "monitor" then
-        monitor = peripheral.wrap(name)
-    elseif pType == "minecraft:chest" then
-        table.insert(chests, peripheral.wrap(name))
-    end
-end
-
-if not monitor then
-    print("Monitor non trouvé !")
-    return
-end
-
-monitor.setTextScale(0.5)
-local width, height = monitor.getSize()
-
--- Construction des lignes de texte à afficher
-local function refreshLines()
-    lines = {}
-    for i, chest in ipairs(chests) do
-        table.insert(lines, "Coffre #" .. i)
-        local items = chest.list()
-        for slot, item in pairs(items) do
-            table.insert(lines, " - " .. item.count .. "x " .. item.name)
-        end
-        table.insert(lines, "") -- ligne vide entre coffres
-    end
-end
-
--- Affichage avec scroll
 local function draw()
     monitor.clear()
+    monitor.setTextScale(1.0)
 
-    -- Zone de texte
+    -- Texte à droite de la barre
     for i = 1, height do
         local lineIndex = scrollPos + i
         if lines[lineIndex] then
-            monitor.setCursorPos(3, i)
+            monitor.setCursorPos(4, i)
             monitor.write(lines[lineIndex])
         end
     end
 
-    -- Dessin du slider à gauche
+    -- Slider (rail + curseur)
     local sliderHeight = math.max(1, math.floor(height * (height / #lines)))
-    local sliderPos = math.floor((scrollPos / (#lines - height)) * (height - sliderHeight))
+    local sliderPos = math.floor((scrollPos / math.max(1, (#lines - height))) * (height - sliderHeight))
+
     for i = 1, height do
-        monitor.setCursorPos(1, i)
+        monitor.setCursorPos(2, i)
         if i >= sliderPos + 1 and i < sliderPos + sliderHeight + 1 then
-            monitor.write("█") -- slider actif
+            monitor.write("#") -- curseur
         else
-            monitor.write("│") -- rail
+            monitor.write("|") -- rail
         end
     end
-end
-
--- Gestion du clic
-local function handleTouch(_, side, x, y)
-    if x == 1 then
-        local maxScroll = math.max(0, #lines - height)
-        scrollPos = math.floor(((y - 1) / height) * maxScroll + 0.5)
-        draw()
-    end
-end
-
--- Boucle principale
-refreshLines()
-draw()
-
-while true do
-    local event = { os.pullEvent("monitor_touch") }
-    handleTouch(table.unpack(event))
 end
