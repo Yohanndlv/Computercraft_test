@@ -1,8 +1,46 @@
+-- === Initialisation ===
+local monitor
+local chests = {}
+local lines = {}
+local scrollPos = 0
+
+-- Récupération du monitor et des coffres
+for _, name in ipairs(peripheral.getNames()) do
+    local pType = peripheral.getType(name)
+    if pType == "monitor" then
+        monitor = peripheral.wrap(name)
+    elseif pType == "minecraft:chest" then
+        table.insert(chests, peripheral.wrap(name))
+    end
+end
+
+if not monitor then
+    print("Monitor non trouvé !")
+    return
+end
+
+monitor.setTextScale(1.0) -- Texte lisible
+local width, height = monitor.getSize()
+
+-- === Préparer les lignes à afficher ===
+local function refreshLines()
+    lines = {}
+    for i, chest in ipairs(chests) do
+        table.insert(lines, "Coffre #" .. i)
+        local items = chest.list()
+        for slot, item in pairs(items) do
+            table.insert(lines, " - " .. item.count .. "x " .. item.name)
+        end
+        table.insert(lines, "") -- ligne vide entre coffres
+    end
+end
+
+-- === Affichage sur le monitor avec barre de scroll ===
 local function draw()
     monitor.clear()
     monitor.setTextScale(1.0)
 
-    -- Texte à droite de la barre
+    -- Texte (commence à la colonne 4 pour laisser la place à la barre)
     for i = 1, height do
         local lineIndex = scrollPos + i
         if lines[lineIndex] then
@@ -11,16 +49,34 @@ local function draw()
         end
     end
 
-    -- Slider (rail + curseur)
+    -- Slider vertical à gauche
     local sliderHeight = math.max(1, math.floor(height * (height / #lines)))
     local sliderPos = math.floor((scrollPos / math.max(1, (#lines - height))) * (height - sliderHeight))
 
     for i = 1, height do
         monitor.setCursorPos(2, i)
         if i >= sliderPos + 1 and i < sliderPos + sliderHeight + 1 then
-            monitor.write("#") -- curseur
+            monitor.write("#") -- Curseur
         else
-            monitor.write("|") -- rail
+            monitor.write("|") -- Rail
         end
     end
+end
+
+-- === Gestion du tactile (scroll en cliquant sur la barre) ===
+local function handleTouch(_, side, x, y)
+    if x <= 3 then -- Zone du slider
+        local maxScroll = math.max(0, #lines - height)
+        scrollPos = math.floor(((y - 1) / height) * maxScroll + 0.5)
+        draw()
+    end
+end
+
+-- === Boucle principale ===
+refreshLines()
+draw()
+
+while true do
+    local event = { os.pullEvent("monitor_touch") }
+    handleTouch(table.unpack(event))
 end
