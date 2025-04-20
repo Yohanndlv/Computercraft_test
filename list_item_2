@@ -1,10 +1,9 @@
--- === Initialisation ===
 local monitor
 local chests = {}
-local lines = {}
-local scrollPos = 0
+local content = {}
+local scroll = 0
 
--- Récupération du monitor et des coffres
+-- Trouver le monitor et les coffres
 for _, name in ipairs(peripheral.getNames()) do
     local pType = peripheral.getType(name)
     if pType == "monitor" then
@@ -15,68 +14,73 @@ for _, name in ipairs(peripheral.getNames()) do
 end
 
 if not monitor then
-    print("Monitor non trouvé !")
+    print("Aucun monitor trouvé.")
     return
 end
 
-monitor.setTextScale(1.0) -- Texte lisible
-local width, height = monitor.getSize()
+monitor.setTextScale(0.5)
+monitor.setBackgroundColor(colors.black)
+monitor.setTextColor(colors.white)
 
--- === Préparer les lignes à afficher ===
-local function refreshLines()
-    lines = {}
+local w, h = monitor.getSize()
+local viewHeight = h
+local maxScroll = 0
+
+-- Générer le contenu à afficher (tout à plat dans une table)
+local function generateContent()
+    content = {}
     for i, chest in ipairs(chests) do
-        table.insert(lines, "Coffre #" .. i)
+        table.insert(content, "Coffre #" .. i)
         local items = chest.list()
-        for slot, item in pairs(items) do
-            table.insert(lines, " - " .. item.count .. "x " .. item.name)
+        for _, item in pairs(items) do
+            table.insert(content, "- " .. item.count .. "x " .. item.name)
         end
-        table.insert(lines, "") -- ligne vide entre coffres
+        table.insert(content, "") -- ligne vide
     end
+    maxScroll = math.max(0, #content - viewHeight + 1)
 end
 
--- === Affichage sur le monitor avec barre de scroll ===
+-- Dessiner le contenu visible
 local function draw()
     monitor.clear()
-    monitor.setTextScale(1.0)
-
-    -- Texte (commence à la colonne 4 pour laisser la place à la barre)
-    for i = 1, height do
-        local lineIndex = scrollPos + i
-        if lines[lineIndex] then
-            monitor.setCursorPos(4, i)
-            monitor.write(lines[lineIndex])
+    for i = 1, viewHeight do
+        local line = content[i + scroll]
+        if line then
+            monitor.setCursorPos(1, i)
+            monitor.write(line:sub(1, w - 2)) -- laisser place au slider
         end
     end
 
-    -- Slider vertical à gauche
-    local sliderHeight = math.max(1, math.floor(height * (height / #lines)))
-    local sliderPos = math.floor((scrollPos / math.max(1, (#lines - height))) * (height - sliderHeight))
+    -- Dessiner le slider
+    local sliderHeight = math.max(1, math.floor(viewHeight * (viewHeight / #content)))
+    local sliderPos = math.floor((scroll / maxScroll) * (viewHeight - sliderHeight)) + 1
 
-    for i = 1, height do
-        monitor.setCursorPos(2, i)
-        if i >= sliderPos + 1 and i < sliderPos + sliderHeight + 1 then
-            monitor.write("#") -- Curseur
+    for i = 1, viewHeight do
+        monitor.setCursorPos(w, i)
+        if i >= sliderPos and i < sliderPos + sliderHeight then
+            monitor.write("|")
         else
-            monitor.write("|") -- Rail
+            monitor.write(" ")
         end
     end
 end
 
--- === Gestion du tactile (scroll en cliquant sur la barre) ===
-local function handleTouch(_, side, x, y)
-    if x <= 3 then -- Zone du slider
-        local maxScroll = math.max(0, #lines - height)
-        scrollPos = math.floor(((y - 1) / height) * maxScroll + 0.5)
+-- Gestion du clic sur le slider
+local function handleTouch(x, y)
+    if x == w then
+        -- calcul du scroll en fonction du clic sur le slider
+        local ratio = (y - 1) / (viewHeight - 1)
+        scroll = math.floor(ratio * maxScroll + 0.5)
         draw()
     end
 end
 
--- === Boucle principale ===
-refreshLines()
+-- Initialisation
+generateContent()
 draw()
 
+-- Boucle d’écoute des événements tactiles
 while true do
-    local event = { os.pullEvent("monitor_touch") }
-    handleTouch(table.unpack(event))
+    local event, side, x, y = os.pullEvent("monitor_touch")
+    handleTouch(x, y)
 end
