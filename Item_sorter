@@ -48,27 +48,17 @@ local function generateContent()
     local newChestContents = {}
     for _, item in ipairs(allItems) do
         if not newChestContents[item.chest] then
-            newChestContents[item.chest] = {}
+            newChestContents[item.chst] = {}
         end
         table.insert(newChestContents[item.chest], {name = item.name, count = item.count})
     end
 
     -- Remplir les coffres avec les objets triés
     for i, chest in ipairs(chests) do
-        -- Vider le coffre actuel (si nécessaire)
-        chest.pushItems(i, 64, 1)  -- Ajuste la logique si tu veux vider d'abord les coffres
-
-        -- Déplacer les items triés dans le coffre
-        for _, item in ipairs(newChestContents[i] or {}) do
-            -- Cherche une slot vide
-            local emptySlot = chest.getSlotEmpty()  -- Si la méthode getSlotEmpty() est supportée
-
-            if emptySlot then
-                chest.pushItems(i, item.count, item.slot)
-            else
-                -- Gestion si plus de place
-                print("Pas assez de place dans le coffre #" .. i)
-            end
+        -- Vider le coffre actuel
+        local items = chest.list()
+        for slot, item in pairs(items) do
+            chest.pushItems(i, item.count, slot) -- Déplacer tous les objets du coffre à la position correcte
         end
     end
 
