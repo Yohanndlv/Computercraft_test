@@ -33,23 +33,30 @@ local function distributeItems(sortedItems)
     local currentChest = chests[currentChestIndex]
     
     for _, item in ipairs(sortedItems) do
-        -- Vérifier si l'item peut être déplacé dans le coffre actuel
+        -- Récupérer les détails de l'item du coffre actuel
         local currentSlot = currentChest.getItemDetail(item.slot)
         
-        -- Si le coffre a un item dans ce slot
-        if currentSlot and currentSlot.name == item.name then
-            -- Ajouter les items au coffre courant (si de la place)
-            local freeSpace = currentChest.getSlotMaxStackSize(item.slot) - currentSlot.count
+        -- Vérifier si l'item peut être ajouté au coffre
+        if currentSlot then
+            -- Calculer l'espace libre dans le slot
+            local freeSpace = 64 - currentSlot.count  -- La capacité maximale d'un slot est 64
             local transferCount = math.min(item.count, freeSpace)
+            if transferCount > 0 then
+                -- Transférer les items
+                currentChest.pushItems(item.chest, item.slot, transferCount)
+                item.count = item.count - transferCount
+            end
+        else
+            -- Si le slot est vide, ajouter l'item
+            local transferCount = math.min(item.count, 64)  -- Un slot peut contenir jusqu'à 64 items
             if transferCount > 0 then
                 currentChest.pushItems(item.chest, item.slot, transferCount)
                 item.count = item.count - transferCount
             end
         end
 
-        -- Si l'item est encore disponible après l'essai d'ajout
+        -- Passer au coffre suivant si nécessaire
         if item.count > 0 then
-            -- Passer au coffre suivant
             currentChestIndex = currentChestIndex + 1
             if currentChestIndex <= #chests then
                 currentChest = chests[currentChestIndex]
