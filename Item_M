@@ -1,0 +1,46 @@
+-- Fonction pour obtenir la première lettre d'un nom d'objet
+function getFirstLetter(itemName)
+    return string.sub(itemName, 1, 1):upper()  -- on récupère la première lettre en majuscule
+end
+
+-- Fonction principale pour trier les objets dans les coffres
+function sortItems()
+    -- Définir les coffres pour chaque lettre de l'alphabet (A-Z) et un coffre pour les objets non triés
+    local chests = {
+        "chest", "chest_a", "chest_b", "chest_c", "chest_d", "chest_e", "chest_f", "chest_g", "chest_h", "chest_i",
+        "chest_j", "chest_k", "chest_l", "chest_m", "chest_n", "chest_o", "chest_p", "chest_q", "chest_r", "chest_s",
+        "chest_t", "chest_u", "chest_v", "chest_w", "chest_x", "chest_y", "chest_z", "chest_unsorted"
+    }
+
+    -- Ouvrir les coffres
+    local depositChest = peripheral.wrap("front")  -- le coffre de dépôt est supposé être à l'avant
+    local chestsTable = {}
+
+    for i = 1, #chests do
+        chestsTable[i] = peripheral.wrap(chests[i])
+    end
+
+    -- Récupérer tous les objets du coffre de dépôt
+    local items = depositChest.list()
+
+    for _, slot in pairs(items) do
+        local itemName = slot.name
+        local firstLetter = getFirstLetter(itemName)
+
+        -- Si la première lettre est A-Z
+        local chestIndex = string.byte(firstLetter) - string.byte("A") + 2  -- Les coffres A-Z commencent à l'index 2
+        if chestIndex >= 2 and chestIndex <= 27 then
+            -- Déplacer l'objet vers le coffre approprié
+            depositChest.pushItems(chestsTable[chestIndex], slot.slot, slot.count)
+        else
+            -- Si ce n'est pas une lettre (par exemple, un objet sans nom de lettre), mettre dans le coffre non trié
+            depositChest.pushItems(chestsTable[28], slot.slot, slot.count)
+        end
+    end
+end
+
+-- Appeler la fonction pour trier les objets
+while true do
+    sortItems()
+    os.sleep(5)  -- Attente de 5 secondes avant de trier à nouveau
+end
