@@ -1,0 +1,71 @@
+-- Initialisation des coffres
+local mainChest
+local depositChest
+local chests = {}
+
+-- Détection des coffres connectés
+for _, name in ipairs(peripheral.getNames()) do
+    local pType = peripheral.getType(name)
+    if pType == "minecraft:chest" then
+        -- Identifier le coffre principal et le coffre de dépôt
+        if name == "mainChest" then
+            mainChest = peripheral.wrap(name)
+        elseif name == "depositChest" then
+            depositChest = peripheral.wrap(name)
+        else
+            -- Autres coffres pour tri (par lettre)
+            table.insert(chests, peripheral.wrap(name))
+        end
+    end
+end
+
+if not mainChest or not depositChest then
+    print("Coffres principaux non trouvés. Veuillez vérifier les connexions.")
+    return
+end
+
+-- Fonction de tri : envoie l'objet dans le coffre correspondant à sa première lettre
+local function sortItem(item)
+    local firstLetter = item.name:sub(1, 1):upper()  -- Première lettre en majuscule
+    local targetChest
+
+    -- Cherche un coffre correspondant à la lettre
+    for _, chest in ipairs(chests) do
+        if chest.getLabel() == firstLetter then
+            targetChest = chest
+            break
+        end
+    end
+
+    -- Si aucun coffre n'est trouvé, on dépose l'objet dans le coffre de dépôt
+    if not targetChest then
+        targetChest = depositChest
+    end
+
+    -- Recherche du premier slot vide dans le coffre de destination
+    for slot = 1, 27 do
+        if not targetChest.getItemDetail(slot) then
+            targetChest.pushItem(1, slot)  -- Déposer l'objet dans le coffre
+            break
+        end
+    end
+end
+
+-- Fonction pour trier tous les objets d'un coffre principal vers les coffres correspondants
+local function sortChest()
+    local items = mainChest.list()
+
+    for slot, item in pairs(items) do
+        sortItem(item)  -- Trie l'élément dans le bon coffre
+        mainChest.pushItem(1, slot)  -- Déplacer l'objet du coffre principal
+    end
+end
+
+-- Boucle infinie pour trier les objets
+while true do
+    -- Trier le coffre principal
+    sortChest()
+
+    -- Attendre quelques secondes avant de refaire un tri (ajuster ce délai si nécessaire)
+    sleep(5)
+end
