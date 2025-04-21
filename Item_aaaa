@@ -1,20 +1,23 @@
 local monitor
 local chests = {}
+local chestNames = {}
 local content = {}
 local scroll = 0
 
--- Trouver le monitor et les coffres
+-- Lier les périphériques
 for _, name in ipairs(peripheral.getNames()) do
     local pType = peripheral.getType(name)
     if pType == "monitor" then
         monitor = peripheral.wrap(name)
     elseif pType == "minecraft:chest" then
-        table.insert(chests, peripheral.wrap(name))
+        local chest = peripheral.wrap(name)
+        table.insert(chests, chest)
+        table.insert(chestNames, name)
     end
 end
 
 if not monitor then
-    print("Aucun monitor trouvé.")
+    print("Aucun moniteur trouvé.")
     return
 end
 
@@ -26,43 +29,68 @@ local w, h = monitor.getSize()
 local viewHeight = h
 local maxScroll = 0
 
--- Fonction pour générer et trier les objets dans tous les coffres
-local function generateContent()
-    content = {}
+-- Fusionne et trie les items
+local function collectAndSortItems()
     local allItems = {}
 
-    -- Récupérer tous les objets
     for i, chest in ipairs(chests) do
         local items = chest.list()
         for slot, item in pairs(items) do
-            table.insert(allItems, {name = item.name, count = item.count, chest = i, slot = slot})
+            table.insert(allItems, {
+                name = item.name,
+                count = item.count,
+                chestIndex = i,
+                chestName = chestNames[i],
+                slot = slot
+            })
         end
     end
 
-    -- Tri des objets par nom
     table.sort(allItems, function(a, b)
         return a.name < b.name
     end)
 
-    -- Réorganiser les objets dans les coffres
-    local newChestContents = {}
-    for _, item in ipairs(allItems) do
-        if not newChestContents[item.chest] then
-            newChestContents[item.chst] = {}
-        end
-        table.insert(newChestContents[item.chest], {name = item.name, count = item.count})
-    end
+    return allItems
+end
 
-    -- Remplir les coffres avec les objets triés
-    for i, chest in ipairs(chests) do
-        -- Vider le coffre actuel
+-- Réorganise les objets entre les coffres
+local function sortAndRedistributeItems()
+    local sorted = collectAndSortItems()
+
+    -- Vider tous les coffres (en les transférant vers le premier)
+    for i = 2, #chests do
+        local chest = chests[i]
         local items = chest.list()
-        for slot, item in pairs(items) do
-            chest.pushItems(i, item.count, slot) -- Déplacer tous les objets du coffre à la position correcte
+        for slot, _ in pairs(items) do
+            chest.pushItems(chestNames[1], slot)
         end
     end
 
-    -- Remplir la table `content` pour l'affichage
+    -- Re-distribuer les items triés dans les coffres
+    local targetChest = 1
+    local targetSlot = 1
+
+    for _, item in ipairs(sorted) do
+        -- Extraire depuis le coffre source vers le bon
+        local fromChest = peripheral.wrap(item.chestName)
+        fromChest.pushItems(chestNames[targetChest], item.slot)
+
+        -- Changer de coffre si le précédent est plein (simpliste)
+        targetSlot = targetSlot + 1
+        if targetSlot > 27 then
+            targetSlot = 1
+            targetChest = targetChest + 1
+            if targetChest > #chests then
+                print("Pas assez d'espace pour tout trier.")
+                break
+            end
+        end
+    end
+end
+
+-- Met à jour le contenu affiché
+local function generateContent()
+    content = {}
     for i, chest in ipairs(chests) do
         table.insert(content, "Coffre #" .. i)
         local items = chest.list()
@@ -74,18 +102,18 @@ local function generateContent()
     maxScroll = math.max(0, #content - viewHeight + 1)
 end
 
--- Dessiner le contenu visible sur le monitor
+-- Affiche sur le monitor
 local function draw()
     monitor.clear()
     for i = 1, viewHeight do
         local line = content[i + scroll]
         if line then
             monitor.setCursorPos(1, i)
-            monitor.write(line:sub(1, w - 2)) -- laisser place au slider
+            monitor.write(line:sub(1, w - 2))
         end
     end
 
-    -- Dessiner le slider
+    -- Dessin du slider
     local sliderHeight = math.max(1, math.floor(viewHeight * (viewHeight / #content)))
     local sliderPos = math.floor((scroll / maxScroll) * (viewHeight - sliderHeight)) + 1
 
@@ -99,21 +127,21 @@ local function draw()
     end
 end
 
--- Gestion du clic sur le slider
+-- Clic tactile sur le slider
 local function handleTouch(x, y)
     if x == w then
-        -- calcul du scroll en fonction du clic sur le slider
         local ratio = (y - 1) / (viewHeight - 1)
         scroll = math.floor(ratio * maxScroll + 0.5)
         draw()
     end
 end
 
--- Initialisation
+-- 🚀 Initialisation
+sortAndRedistributeItems()
 generateContent()
 draw()
 
--- Boucle d’écoute des événements tactiles
+-- Boucle événementielle
 while true do
     local event, side, x, y = os.pullEvent("monitor_touch")
     handleTouch(x, y)
