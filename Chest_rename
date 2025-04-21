@@ -1,0 +1,52 @@
+-- === CONFIGURATION ===
+local PREFIX = "chest_"
+local MAX_CHESTS = 30
+
+-- === FONCTIONS ===
+local function clearTerminal()
+  term.clear()
+  term.setCursorPos(1,1)
+end
+
+-- Vérifie si le périphérique est un coffre (naïvement)
+local function isChest(name)
+  local type = peripheral.getType(name)
+  return type and (type:lower():find("chest") or type == "ironchest")
+end
+
+-- === SCRIPT PRINCIPAL ===
+clearTerminal()
+print("🔍 Recherche des coffres connectés...")
+
+local allPeripherals = peripheral.getNames()
+local chestNames = {}
+
+-- Filtrage des coffres uniquement
+for _, name in ipairs(allPeripherals) do
+  if isChest(name) and name ~= "left" and name ~= "right" and name ~= "top" and name ~= "bottom" then
+    table.insert(chestNames, name)
+  end
+end
+
+-- Tri (juste pour cohérence)
+table.sort(chestNames)
+
+if #chestNames < MAX_CHESTS then
+  print("⚠️ Seulement " .. #chestNames .. " coffres détectés. Il en faut 30.")
+  return
+end
+
+-- Renommage
+for i = 1, MAX_CHESTS do
+  local oldName = chestNames[i]
+  local newName = PREFIX .. i
+
+  local success = peripheral.call(oldName, "setName", newName)
+  if success then
+    print("✅ " .. oldName .. " → " .. newName)
+  else
+    print("❌ Échec du renommage de " .. oldName)
+  end
+end
+
+print("\n🎉 Renommage terminé !")
