@@ -1,0 +1,57 @@
+-- Détecter tous les coffres connectés
+local chests = {}
+for _, name in ipairs(peripheral.getNames()) do
+    local pType = peripheral.getType(name)
+    if pType == "minecraft:chest" then
+        table.insert(chests, peripheral.wrap(name))
+    end
+end
+
+-- Fonction pour trier les items par ordre alphabétique
+local function getSortedItems()
+    local items = {}
+    
+    -- Récupérer les items de tous les coffres
+    for _, chest in ipairs(chests) do
+        local chestItems = chest.list()
+        for slot, item in pairs(chestItems) do
+            table.insert(items, {name = item.name, count = item.count, slot = slot, chest = chest})
+        end
+    end
+    
+    -- Trier les items par nom
+    table.sort(items, function(a, b)
+        return a.name < b.name
+    end)
+    
+    return items
+end
+
+-- Fonction pour redistribuer les items triés dans les coffres
+local function distributeItems(sortedItems)
+    local currentChestIndex = 1
+    local currentChest = chests[currentChestIndex]
+    
+    for _, item in ipairs(sortedItems) do
+        -- Vérifier si le coffre actuel peut accepter plus d'items
+        local slot = currentChest.getSlotItem(item.slot)
+        if slot and slot.name == item.name then
+            -- Ajouter les items au coffre courant
+            local transferCount = math.min(item.count, currentChest.getSlotCount(item.slot))
+            currentChest.pushItems(item.chest, item.slot, transferCount)
+            item.count = item.count - transferCount
+        end
+    end
+end
+
+-- Fonction principale de tri et de distribution
+local function sortAndDistribute()
+    -- Récupérer les items triés
+    local sortedItems = getSortedItems()
+
+    -- Distribuer les items entre les coffres
+    distributeItems(sortedItems)
+end
+
+-- Exécuter le tri et la distribution des items
+sortAndDistribute()
