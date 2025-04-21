@@ -1,0 +1,72 @@
+local peripheral = require("peripheral")
+
+-- Variables
+local chests = {}
+local depositChest
+local unsortedChest
+local alphabet = "abcdefghijklmnopqrstuvwxyz"
+local numChests = 28 -- 28 coffres pour chaque lettre de l'alphabet, plus un coffre pour les non triés.
+
+-- Fonction pour détecter les coffres
+local function findChests()
+    local chestsList = peripheral.getNames()
+    local tempChests = {}
+
+    for _, name in ipairs(chestsList) do
+        local pType = peripheral.getType(name)
+        if pType == "minecraft:chest" then
+            table.insert(tempChests, peripheral.wrap(name))
+        end
+    end
+
+    -- Trier les coffres : le premier coffre est celui où le joueur dépose les objets.
+    table.sort(tempChests, function(a, b)
+        return a.getID() < b.getID()  -- On trie par ID pour que le 1er coffre soit toujours celui de dépôt.
+    end)
+
+    -- On assigne le premier coffre pour le dépôt et le 28e pour les objets non triés.
+    depositChest = tempChests[1]
+    unsortedChest = tempChests[numChests]
+
+    -- Reste des coffres pour les lettres.
+    for i = 2, numChests - 1 do
+        chests[alphabet:sub(i - 1, i - 1)] = tempChests[i]
+    end
+end
+
+-- Fonction pour trier les objets
+local function sortItems()
+    local items = depositChest.list()  -- Récupère les objets du coffre de dépôt
+
+    for slot, item in pairs(items) do
+        local firstLetter = item.name:sub(1, 1):lower()  -- Prend la première lettre et la convertit en minuscule
+        local destinationChest
+
+        -- On vérifie si l'objet peut être trié dans un coffre (A-Z)
+        if alphabet:find(firstLetter) then
+            destinationChest = chests[firstLetter]  -- Si oui, affecter au coffre correspondant.
+        else
+            -- Sinon, mettre dans le coffre non trié (28e coffre)
+            destinationChest = unsortedChest
+        end
+
+        -- Déplacer l'objet vers le coffre correspondant
+        if destinationChest then
+            destinationChest.pushItems(depositChest, slot, item.count)
+            depositChest.removeItem(slot, item.count)
+        end
+    end
+end
+
+-- Fonction de démarrage
+local function mainLoop()
+    findChests()  -- Initialisation des coffres
+    while true do
+        -- Tri les objets toutes les 10 secondes
+        sortItems()
+        sleep(10)  -- Attends 10 secondes avant de refaire un tri
+    end
+end
+
+-- Lancer la boucle principale
+mainLoop()
