@@ -1,0 +1,73 @@
+-- Récupérer tous les noms de coffres connectés
+local chests = {}
+for _, name in ipairs(peripheral.getNames()) do
+    if peripheral.getType(name) == "minecraft:chest" then
+        table.insert(chests, name)
+    end
+end
+
+-- Vérifier qu'on a au moins deux coffres
+if #chests < 2 then
+    print("Pas assez de coffres pour trier.")
+    return
+end
+
+-- Rassembler tous les items dans une table
+local allItems = {}
+
+for _, chestName in ipairs(chests) do
+    local items = peripheral.call(chestName, "list")
+    for slot, item in pairs(items) do
+        table.insert(allItems, {
+            name = item.name,
+            count = item.count,
+            slot = slot,
+            from = chestName
+        })
+    end
+end
+
+-- Trier les items par ordre alphabétique
+table.sort(allItems, function(a, b)
+    return a.name < b.name
+end)
+
+-- Vider tous les coffres dans un "buffer" (ici le premier coffre)
+local bufferChest = chests[1]
+
+for i = 2, #chests do
+    local chestName = chests[i]
+    local items = peripheral.call(chestName, "list")
+    for slot, item in pairs(items) do
+        peripheral.call(chestName, "pushItems", bufferChest, slot)
+    end
+end
+
+-- Réinitialiser les items (on les récupère depuis le buffer)
+local consolidated = {}
+local bufferItems = peripheral.call(bufferChest, "list")
+for slot, item in pairs(bufferItems) do
+    table.insert(consolidated, {
+        name = item.name,
+        count = item.count,
+        slot = slot
+    })
+end
+
+-- Redistribuer les items triés dans les coffres
+local chestIndex = 1
+local slotOut = 1
+
+-- On repart tous les items
+for _, sorted in ipairs(allItems) do
+    while sorted.count > 0 and chestIndex <= #chests do
+        local transferred = peripheral.call(bufferChest, "pushItems", chests[chestIndex], sorted.slot)
+        sorted.count = sorted.count - transferred
+
+        if sorted.count > 0 then
+            chestIndex = chestIndex + 1
+        end
+    end
+end
+
+print("Tri terminé !")
