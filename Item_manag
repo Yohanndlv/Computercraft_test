@@ -1,0 +1,27 @@
+-- Liste des coffres à traiter
+local chests = {"minecraft:chest_0", "minecraft:chest_1", "minecraft:chest_2", "minecraft:chest_3"} -- Ajoutez autant de coffres que nécessaire
+
+-- Indice pour parcourir les coffres
+local currentChestIndex = 1
+
+-- Boucle infinie
+while true do
+    -- Récupérer le coffre actuel
+    local currentChest = chests[currentChestIndex]
+    
+    -- Récupérer le coffre suivant (en boucle, donc après le dernier, on revient au premier coffre)
+    local nextChestIndex = currentChestIndex + 1
+    if nextChestIndex > #chests then
+        nextChestIndex = 1
+    end
+    local nextChest = chests[nextChestIndex]
+
+    -- Exécuter la commande pour déplacer les items
+    peripheral.call(currentChest, "pushItems", nextChest, 1)
+    
+    -- Passer au coffre suivant pour le prochain tour
+    currentChestIndex = nextChestIndex
+    
+    -- Attente pour ne pas saturer les ressources
+    sleep(1)  -- Pause de 1 seconde (ajustez selon vos besoins)
+end
