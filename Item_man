@@ -43,14 +43,14 @@ local function distributeItems(sortedItems)
             local transferCount = math.min(item.count, freeSpace)
             if transferCount > 0 then
                 -- Transférer les items
-                currentChest.pushItems(item.chest, item.slot, transferCount)
+                currentChest.pushItems(peripheral.getName(item.chest), item.slot, transferCount)
                 item.count = item.count - transferCount
             end
         else
             -- Si le slot est vide, ajouter l'item
             local transferCount = math.min(item.count, 64)  -- Un slot peut contenir jusqu'à 64 items
             if transferCount > 0 then
-                currentChest.pushItems(item.chest, item.slot, transferCount)
+                currentChest.pushItems(peripheral.getName(item.chest), item.slot, transferCount)
                 item.count = item.count - transferCount
             end
         end
