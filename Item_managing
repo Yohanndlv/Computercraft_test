@@ -27,18 +27,17 @@ local maxScroll = 0
 
 -- Fonction pour générer le contenu (trier les objets)
 local function sortItems()
-    -- Vider les objets des coffres
-    local itemsToSort = {}
-
     -- Récupérer tous les objets du coffre de dépôt (coffre 1)
+    local itemsToSort = {}
     local depositChest = chests[1]
     if depositChest then
         itemsToSort = depositChest.list()
+
         -- Vider le coffre de dépôt en supprimant les objets
         for slot = 1, depositChest.size() do
             local item = depositChest.getItemDetail(slot)
             if item then
-                -- Push les items du coffre de dépôt vers l'extérieur (vers un côté, par exemple "front")
+                -- Pousser les objets vers un côté, par exemple "front"
                 depositChest.pushItem("front", item.count, slot)
             end
         end
@@ -71,6 +70,7 @@ local function sortItems()
             for _, item in ipairs(items) do
                 for slot = 1, chest.size() do
                     if not chest.getItemDetail(slot) then
+                        -- Pousser les objets dans le coffre approprié
                         chest.pushItem("front", item.count, slot)
                         break
                     end
