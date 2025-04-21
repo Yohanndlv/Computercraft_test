@@ -39,12 +39,19 @@ for _, item in ipairs(allItems) do
     while not placed and currentChestIndex <= #chestNames do
         local targetChest = chestNames[currentChestIndex]
         
-        -- Vérifier qu'on peut déplacer un item de la source vers la destination
-        local moved = peripheral.call(item.source, "pushItems", targetChest, item.slot, item.count)
-        if moved > 0 then
-            placed = true
+        -- Vérifier si le coffre cible a de la place
+        local targetChestSpace = peripheral.call(targetChest, "space")
+        if targetChestSpace > 0 then
+            -- Essayer de déplacer un item du coffre source vers le coffre cible
+            local moved = peripheral.call(item.source, "pushItems", targetChest, item.slot, item.count)
+            if moved > 0 then
+                placed = true
+            else
+                -- Le transfert a échoué, passer au coffre suivant
+                currentChestIndex = currentChestIndex + 1
+            end
         else
-            -- Le coffre est plein, on passe au suivant
+            -- Si le coffre est plein, on passe au coffre suivant
             currentChestIndex = currentChestIndex + 1
         end
     end
