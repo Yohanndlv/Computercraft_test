@@ -45,16 +45,39 @@ local function distributeItems(sortedItems)
             local freeSpace = 64 - currentSlot.count  -- La capacité maximale d'un slot est 64
             local transferCount = math.min(item.count, freeSpace)
             if transferCount > 0 then
-                -- Transférer les items
-                currentChest.pushItems(chestNames[currentChestIndex], item.slot, transferCount)
-                item.count = item.count - transferCount
+                -- Trouver l'index du coffre cible en fonction de l'objet `peripheral`
+                local targetChestIndex = nil
+                for i, chest in ipairs(chests) do
+                    if chest == item.chest then
+                        targetChestIndex = i
+                        break
+                    end
+                end
+                
+                -- Si l'index du coffre cible est trouvé, procéder au transfert
+                if targetChestIndex then
+                    currentChest.pushItems(chestNames[targetChestIndex], item.slot, transferCount)
+                    item.count = item.count - transferCount
+                end
             end
         else
             -- Si le slot est vide, ajouter l'item
             local transferCount = math.min(item.count, 64)  -- Un slot peut contenir jusqu'à 64 items
             if transferCount > 0 then
-                currentChest.pushItems(chestNames[currentChestIndex], item.slot, transferCount)
-                item.count = item.count - transferCount
+                -- Trouver l'index du coffre cible en fonction de l'objet `peripheral`
+                local targetChestIndex = nil
+                for i, chest in ipairs(chests) do
+                    if chest == item.chest then
+                        targetChestIndex = i
+                        break
+                    end
+                end
+                
+                -- Si l'index du coffre cible est trouvé, procéder au transfert
+                if targetChestIndex then
+                    currentChest.pushItems(chestNames[targetChestIndex], item.slot, transferCount)
+                    item.count = item.count - transferCount
+                end
             end
         end
 
