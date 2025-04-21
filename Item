@@ -1,0 +1,91 @@
+local monitor
+local chests = {}
+local content = {}
+
+-- Trouver le monitor et les coffres
+for _, name in ipairs(peripheral.getNames()) do
+    local pType = peripheral.getType(name)
+    if pType == "monitor" then
+        monitor = peripheral.wrap(name)
+    elseif pType == "minecraft:chest" then
+        table.insert(chests, peripheral.wrap(name))
+    end
+end
+
+if not monitor then
+    print("Aucun monitor trouvé.")
+    return
+end
+
+monitor.setTextScale(0.5)
+monitor.setBackgroundColor(colors.black)
+monitor.setTextColor(colors.white)
+
+local w, h = monitor.getSize()
+local viewHeight = h
+local maxScroll = 0
+
+-- Fonction pour générer le contenu (trier les objets)
+local function sortItems()
+    -- Vider les objets des coffres
+    local itemsToSort = {}
+
+    -- Récupérer tous les objets du coffre de dépôt (coffre 1)
+    local depositChest = chests[1]
+    if depositChest then
+        itemsToSort = depositChest.list()
+        -- Vider le coffre de dépôt
+        depositChest.clear()
+    end
+
+    -- Trier les objets par la première lettre de leur nom
+    local sortedItems = {}
+    for _, item in pairs(itemsToSort) do
+        local firstLetter = string.sub(item.name, 1, 1):upper()
+
+        if firstLetter:match("%a") then
+            local letterIndex = string.byte(firstLetter) - string.byte("A") + 2
+            if not sortedItems[letterIndex] then
+                sortedItems[letterIndex] = {}
+            end
+            table.insert(sortedItems[letterIndex], item)
+        else
+            -- Si l'item ne commence pas par une lettre, on le met après 'Z'
+            if not sortedItems[27] then
+                sortedItems[27] = {}
+            end
+            table.insert(sortedItems[27], item)
+        end
+    end
+
+    -- Distribuer les objets triés dans les coffres appropriés
+    for index, items in pairs(sortedItems) do
+        local chest = chests[index]
+        if chest then
+            for _, item in ipairs(items) do
+                for slot = 1, chest.size() do
+                    if not chest.getItemDetail(slot) then
+                        chest.pushItem(1, item.count, slot)
+                        break
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Dessiner le contenu à afficher
+local function draw()
+    monitor.clear()
+    monitor.setCursorPos(1, 1)
+    monitor.write("Tri des objets en cours...")
+end
+
+-- Boucle infinie pour trier les objets toutes les 30 secondes
+while true do
+    draw()
+    sortItems()  -- Trier les objets
+
+    -- Attendre 30 secondes avant de trier à nouveau
+    os.sleep(30)
+end
