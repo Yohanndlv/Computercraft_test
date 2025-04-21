@@ -1,4 +1,4 @@
--- === SMART STORAGE SYSTEM v1 ===
+-- === SMART STORAGE SYSTEM v2 ===
 -- Auteur : ChatGPT x Toi 😎
 
 -- === CONFIGURATION ===
@@ -14,7 +14,7 @@ local outputChest = peripheral.wrap(outputChestName)
 -- Liste des coffres de stockage
 local storageChests = {}
 for _, name in pairs(peripheral.getNames()) do
-  if peripheral.getType(name) == "minecraft:chest" and name ~= inputChestName and name ~= outputChestName then
+  if peripheral.getType(name):lower():find("chest") and name ~= inputChestName and name ~= outputChestName then
     table.insert(storageChests, peripheral.wrap(name))
   end
 end
@@ -31,18 +31,17 @@ function clearMonitor()
   monitor.setCursorPos(1, 1)
 end
 
-function title(text)
+function title()
   monitor.setCursorPos(1, 1)
   monitor.setTextColor(colors.cyan)
   monitor.write("== Smart Storage System ==")
   monitor.setCursorPos(1, 2)
   monitor.setTextColor(colors.white)
-  monitor.write(" Page " .. page)
+  monitor.write(" Page " .. page .. " | Tap item to withdraw")
 end
 
 function buildItemIndex()
   itemIndex = {}
-  local counts = {}
 
   for _, chest in pairs(storageChests) do
     local items = chest.list()
@@ -81,11 +80,12 @@ function displayItems()
     local item = sortedItems[startIdx + i]
     if item then
       monitor.setCursorPos(2, 4 + i)
+      monitor.setTextColor(colors.yellow)
       monitor.write(string.format("[%2d] %s x%d", i + 1, item.name, item.count))
     end
   end
 
-  -- Boutons navigation
+  -- Navigation
   monitor.setCursorPos(1, 18)
   monitor.setTextColor(colors.green)
   monitor.write("[<<] Page [>>]")
@@ -104,26 +104,50 @@ function moveItemToOutput(index)
   end
 end
 
+-- === NOUVEAU : TRI AUTOMATIQUE ===
+function autoSortInputChest()
+  local items = inputChest.list()
+  for slot, item in pairs(items) do
+    local moved = false
+    for _, chest in ipairs(storageChests) do
+      local space = chest.pullItems(peripheral.getName(inputChest), slot)
+      if space > 0 then
+        moved = true
+        break
+      end
+    end
+    if not moved then
+      print("Pas de place pour " .. item.name)
+    end
+  end
+end
+
 -- === MAIN LOOP ===
 function run()
   while true do
+    autoSortInputChest()
     buildItemIndex()
     displayItems()
 
-    local event, side, x, y = os.pullEvent("monitor_touch")
+    local timer = os.startTimer(2) -- 2 secondes avant refresh auto
+    local event, side, x, y
 
-    -- Page back
-    if x >= 1 and x <= 4 and y == 18 then
-      page = math.max(1, page - 1)
+    repeat
+      event, side, x, y = os.pullEvent()
+    until event == "monitor_touch" or event == "timer"
 
-    -- Page forward
-    elseif x >= 12 and x <= 15 and y == 18 then
-      page = page + 1
-
-    -- Sélection d'item
-    elseif y >= 4 and y <= 4 + itemsPerPage - 1 then
-      local idx = (page - 1) * itemsPerPage + (y - 4) + 1
-      moveItemToOutput(idx)
+    if event == "monitor_touch" then
+      -- Page back
+      if x >= 1 and x <= 4 and y == 18 then
+        page = math.max(1, page - 1)
+      -- Page forward
+      elseif x >= 12 and x <= 15 and y == 18 then
+        page = page + 1
+      -- Item selection
+      elseif y >= 4 and y <= 4 + itemsPerPage - 1 then
+        local idx = (page - 1) * itemsPerPage + (y - 4) + 1
+        moveItemToOutput(idx)
+      end
     end
   end
 end
