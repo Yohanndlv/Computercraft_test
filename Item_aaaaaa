@@ -1,0 +1,60 @@
+-- Liste des coffres dans l'ordre de priorité (à remplir en premier)
+local chestNames = {
+    "minecraft:chest_0",
+    "minecraft:chest_1",
+    "minecraft:chest_2"
+    -- ajoute-en autant que nécessaire
+}
+
+-- Indexer tous les items avec leur source
+local allItems = {}
+
+for _, chestName in ipairs(chestNames) do
+    local items = peripheral.call(chestName, "list")
+    for slot, item in pairs(items) do
+        table.insert(allItems, {
+            name = item.name,
+            count = item.count,
+            source = chestName,
+            slot = slot
+        })
+    end
+end
+
+-- Trier les items par nom (ordre alphabétique)
+table.sort(allItems, function(a, b)
+    return a.name < b.name
+end)
+
+-- Vider tous les coffres pour éviter de mélanger
+-- On met tout dans un coffre tampon temporaire (ex: minecraft:chest_temp)
+-- Commenter cette partie si tu veux directement trier sans "reset"
+--[[
+local tempChest = "minecraft:chest_temp"
+for _, chest in ipairs(chestNames) do
+    local items = peripheral.call(chest, "list")
+    for slot, _ in pairs(items) do
+        peripheral.call(chest, "pushItems", tempChest, slot)
+    end
+end
+]]
+
+-- Répartition dans les coffres
+local currentChestIndex = 1
+local currentSlot = 1
+
+for _, item in ipairs(allItems) do
+    local placed = false
+    while not placed and currentChestIndex <= #chestNames do
+        local target = chestNames[currentChestIndex]
+        local pushed = peripheral.call(item.source, "pushItems", target, item.slot)
+        if pushed > 0 then
+            placed = true
+        else
+            -- coffre plein, on passe au suivant
+            currentChestIndex = currentChestIndex + 1
+        end
+    end
+end
+
+print("Tri terminé.")
