@@ -2,7 +2,6 @@ local monitor
 local chests = {}
 local content = {}
 local scroll = 0
-local sorted = false
 
 -- Trouver le monitor et les coffres
 for _, name in ipairs(peripheral.getNames()) do
@@ -27,50 +26,41 @@ local w, h = monitor.getSize()
 local viewHeight = h
 local maxScroll = 0
 
--- Fonction pour récupérer tous les items et les trier
-local function getAllItems()
-    local items = {}
+-- Fonction pour générer et trier les objets dans tous les coffres
+local function generateContent()
+    content = {}
+    local allItems = {}
+
+    -- Récupérer tous les objets
     for i, chest in ipairs(chests) do
-        local chestItems = chest.list()
-        for slot, item in pairs(chestItems) do
-            table.insert(items, {name = item.name, count = item.count, chest = chest, slot = slot})
+        local items = chest.list()
+        for slot, item in pairs(items) do
+            table.insert(allItems, {name = item.name, count = item.count, chest = i, slot = slot})
         end
     end
 
-    -- Trier par nom d'objet
-    table.sort(items, function(a, b)
+    -- Tri des objets par nom
+    table.sort(allItems, function(a, b)
         return a.name < b.name
     end)
 
-    return items
-end
+    -- Réorganiser les objets dans les coffres
+    local newChestContents = {}
+    for _, item in ipairs(allItems) do
+        if not newChestContents[item.chest] then
+            newChestContents[item.chest] = {}
+        end
+        table.insert(newChestContents[item.chest], {name = item.name, count = item.count})
+    end
 
--- Fonction pour redistribuer les items entre les coffres
-local function distributeItems(items)
-    local currentChestIndex = 1
-
-    for _, item in ipairs(items) do
-        -- Chercher un coffre avec de l'espace
-        local chest = chests[currentChestIndex]
-        local freeSlot = chest.getFreeSlot()
-
-        if freeSlot then
-            chest.pushItem(item.chest.getName(), item.slot, item.count, freeSlot)
-        else
-            currentChestIndex = currentChestIndex + 1
-            if currentChestIndex > #chests then
-                print("Pas assez de place dans les coffres !")
-                break
-            end
-            chest = chests[currentChestIndex]
-            chest.pushItem(item.chest.getName(), item.slot, item.count, 1) -- Mettre dans le premier slot du nouveau coffre
+    -- Remplir les coffres avec les objets triés
+    for i, chest in ipairs(chests) do
+        for _, item in ipairs(newChestContents[i] or {}) do
+            chest.pushItems(i, 64, 1) -- Ajouter à un coffre (ajuste selon tes besoins)
         end
     end
-end
 
--- Fonction pour générer le contenu à afficher
-local function generateContent()
-    content = {}
+    -- Remplir la table `content` pour l'affichage
     for i, chest in ipairs(chests) do
         table.insert(content, "Coffre #" .. i)
         local items = chest.list()
@@ -82,7 +72,7 @@ local function generateContent()
     maxScroll = math.max(0, #content - viewHeight + 1)
 end
 
--- Fonction pour afficher le contenu
+-- Dessiner le contenu visible sur le monitor
 local function draw()
     monitor.clear()
     for i = 1, viewHeight do
@@ -113,13 +103,6 @@ local function handleTouch(x, y)
         -- calcul du scroll en fonction du clic sur le slider
         local ratio = (y - 1) / (viewHeight - 1)
         scroll = math.floor(ratio * maxScroll + 0.5)
-        draw()
-    elseif x == w - 2 and y == 1 then
-        -- Clic sur le bouton de tri
-        print("Tri des objets...")
-        local items = getAllItems()
-        distributeItems(items)
-        generateContent()
         draw()
     end
 end
