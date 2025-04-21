@@ -36,7 +36,11 @@ local function sortItems()
         itemsToSort = depositChest.list()
         -- Vider le coffre de dépôt en supprimant les objets
         for slot = 1, depositChest.size() do
-            depositChest.pushItem(slot, depositChest.getItemDetail(slot).count)
+            local item = depositChest.getItemDetail(slot)
+            if item then
+                -- Push les items du coffre de dépôt vers l'extérieur (vers un côté, par exemple "front")
+                depositChest.pushItem("front", item.count, slot)
+            end
         end
     end
 
@@ -67,7 +71,7 @@ local function sortItems()
             for _, item in ipairs(items) do
                 for slot = 1, chest.size() do
                     if not chest.getItemDetail(slot) then
-                        chest.pushItem(1, item.count, slot)
+                        chest.pushItem("front", item.count, slot)
                         break
                     end
                 end
