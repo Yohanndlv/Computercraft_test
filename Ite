@@ -33,5 +33,8 @@ local function transferItems()
     print("Transfert terminé entre tous les coffres.")
 end
 
--- Lancer la fonction de transfert
-transferItems()
+-- Boucle infinie pour faire tourner le transfert
+while true do
+    transferItems() -- Appelle la fonction pour transférer les items
+    sleep(5) -- Attends 5 secondes avant de refaire un transfert
+end
