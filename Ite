@@ -34,8 +34,10 @@ local function sortItems()
     local depositChest = chests[1]
     if depositChest then
         itemsToSort = depositChest.list()
-        -- Vider le coffre de dépôt
-        depositChest.clear()
+        -- Vider le coffre de dépôt en supprimant les objets
+        for slot = 1, depositChest.size() do
+            depositChest.pushItem(slot, depositChest.getItemDetail(slot).count)
+        end
     end
 
     -- Trier les objets par la première lettre de leur nom
