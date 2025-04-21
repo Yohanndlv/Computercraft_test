@@ -1,5 +1,6 @@
-local depositChest = peripheral.wrap("front")  -- Le coffre de dépôt (modifier selon la position)
-local chests = {}  -- Table pour les autres coffres
+-- Définir le coffre de dépôt et les autres coffres de tri
+local depositChest = peripheral.wrap("front")  -- Modifier selon la position
+local chests = {}  -- Table pour les coffres de A-Z
 local unSortedChest -- Coffre pour les objets non triés
 
 -- Trouver les coffres (coffre de dépôt, coffres de A-Z et un coffre pour les non triés)
@@ -15,13 +16,16 @@ local function findChests()
             -- Le premier coffre est celui de dépôt
             if not depositChest then
                 depositChest = peripheral.wrap(side)
+                print("Coffre de dépôt trouvé.")
             elseif not unSortedChest then
                 unSortedChest = peripheral.wrap(side)
+                print("Coffre non trié trouvé.")
             else
                 -- Coffres pour les lettres A-Z
                 for i = 1, #alphabet do
                     if not chests[alphabet:sub(i, i)] then
                         chests[alphabet:sub(i, i)] = peripheral.wrap(side)
+                        print("Coffre " .. alphabet:sub(i, i) .. " trouvé.")
                         break
                     end
                 end
@@ -41,33 +45,40 @@ local function sortItems()
         return
     end
 
+    -- Pour chaque objet dans le coffre de dépôt
     for slot, item in pairs(items) do
         -- Vérification que l'objet a un nom valide
         if item and item.name then
             -- Prendre la première lettre du nom de l'objet
             local firstLetter = item.name:sub(1, 1):upper()
 
-            -- Si la première lettre est une lettre de l'alphabet
+            -- Vérifier que la première lettre est valide (A-Z)
             if firstLetter:match("[A-Z]") then
-                -- Vérifier si le coffre correspondant existe
+                -- Vérifier si le coffre correspondant existe pour cette lettre
                 if chests[firstLetter] then
                     -- Déplacer l'objet dans le coffre correspondant
                     local success, message = pcall(function()
+                        -- Essayer de déplacer l'objet
                         depositChest.pushItems(chests[firstLetter], slot, item.count)
                     end)
                     if not success then
                         print("Erreur en déplaçant " .. item.name .. ": " .. message)
                     end
+                else
+                    print("Coffre pour " .. firstLetter .. " non trouvé.")
                 end
             else
                 -- Si l'objet n'a pas de première lettre valide (non alphabetique), on l'envoie dans le coffre non trié
                 if unSortedChest then
                     local success, message = pcall(function()
+                        -- Essayer de déplacer l'objet vers le coffre non trié
                         depositChest.pushItems(unSortedChest, slot, item.count)
                     end)
                     if not success then
                         print("Erreur en déplaçant " .. item.name .. " dans le coffre non trié: " .. message)
                     end
+                else
+                    print("Coffre non trié introuvable.")
                 end
             end
         else
