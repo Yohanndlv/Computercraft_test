@@ -1,0 +1,131 @@
+-- === SMART STORAGE SYSTEM v1 ===
+-- Auteur : ChatGPT x Toi 😎
+
+-- === CONFIGURATION ===
+local inputChestName = "minecraft:chest_0"
+local outputChestName = "minecraft:chest_out"
+local monitorName = "monitor_0"
+
+-- === INITIALISATION ===
+local monitor = peripheral.wrap(monitorName)
+local inputChest = peripheral.wrap(inputChestName)
+local outputChest = peripheral.wrap(outputChestName)
+
+-- Liste des coffres de stockage
+local storageChests = {}
+for _, name in pairs(peripheral.getNames()) do
+  if peripheral.getType(name) == "minecraft:chest" and name ~= inputChestName and name ~= outputChestName then
+    table.insert(storageChests, peripheral.wrap(name))
+  end
+end
+
+-- Variables globales
+local itemIndex = {}
+local page = 1
+local itemsPerPage = 12
+
+-- === OUTILS ===
+function clearMonitor()
+  monitor.setBackgroundColor(colors.black)
+  monitor.clear()
+  monitor.setCursorPos(1, 1)
+end
+
+function title(text)
+  monitor.setCursorPos(1, 1)
+  monitor.setTextColor(colors.cyan)
+  monitor.write("== Smart Storage System ==")
+  monitor.setCursorPos(1, 2)
+  monitor.setTextColor(colors.white)
+  monitor.write(" Page " .. page)
+end
+
+function buildItemIndex()
+  itemIndex = {}
+  local counts = {}
+
+  for _, chest in pairs(storageChests) do
+    local items = chest.list()
+    for slot, item in pairs(items) do
+      local key = item.name
+      if not itemIndex[key] then
+        itemIndex[key] = {count = 0, locations = {}}
+      end
+      itemIndex[key].count = itemIndex[key].count + item.count
+      table.insert(itemIndex[key].locations, {
+        chest = chest,
+        slot = slot,
+        count = item.count
+      })
+    end
+  end
+end
+
+function getSortedItemList()
+  local list = {}
+  for name, data in pairs(itemIndex) do
+    table.insert(list, {name = name, count = data.count})
+  end
+  table.sort(list, function(a, b) return a.name < b.name end)
+  return list
+end
+
+function displayItems()
+  clearMonitor()
+  title()
+
+  local sortedItems = getSortedItemList()
+  local startIdx = (page - 1) * itemsPerPage + 1
+
+  for i = 0, itemsPerPage - 1 do
+    local item = sortedItems[startIdx + i]
+    if item then
+      monitor.setCursorPos(2, 4 + i)
+      monitor.write(string.format("[%2d] %s x%d", i + 1, item.name, item.count))
+    end
+  end
+
+  -- Boutons navigation
+  monitor.setCursorPos(1, 18)
+  monitor.setTextColor(colors.green)
+  monitor.write("[<<] Page [>>]")
+  monitor.setTextColor(colors.white)
+end
+
+function moveItemToOutput(index)
+  local sortedItems = getSortedItemList()
+  local item = sortedItems[index]
+  if not item then return end
+
+  local locations = itemIndex[item.name].locations
+  for _, loc in ipairs(locations) do
+    loc.chest.pushItems(peripheral.getName(outputChest), loc.slot, loc.count)
+    sleep(0.1)
+  end
+end
+
+-- === MAIN LOOP ===
+function run()
+  while true do
+    buildItemIndex()
+    displayItems()
+
+    local event, side, x, y = os.pullEvent("monitor_touch")
+
+    -- Page back
+    if x >= 1 and x <= 4 and y == 18 then
+      page = math.max(1, page - 1)
+
+    -- Page forward
+    elseif x >= 12 and x <= 15 and y == 18 then
+      page = page + 1
+
+    -- Sélection d'item
+    elseif y >= 4 and y <= 4 + itemsPerPage - 1 then
+      local idx = (page - 1) * itemsPerPage + (y - 4) + 1
+      moveItemToOutput(idx)
+    end
+  end
+end
+
+run()
