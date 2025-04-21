@@ -1,9 +1,12 @@
--- Détecter tous les coffres connectés
+-- Détecter tous les coffres connectés et récupérer leur nom
 local chests = {}
+local chestNames = {}
 for _, name in ipairs(peripheral.getNames()) do
     local pType = peripheral.getType(name)
     if pType == "minecraft:chest" then
+        -- Enregistrer à la fois le périphérique et son nom
         table.insert(chests, peripheral.wrap(name))
+        table.insert(chestNames, name)  -- Ajouter le nom du périphérique à une liste séparée
     end
 end
 
@@ -43,14 +46,14 @@ local function distributeItems(sortedItems)
             local transferCount = math.min(item.count, freeSpace)
             if transferCount > 0 then
                 -- Transférer les items
-                currentChest.pushItems(peripheral.getName(item.chest), item.slot, transferCount)
+                currentChest.pushItems(chestNames[item.chest], item.slot, transferCount)
                 item.count = item.count - transferCount
             end
         else
             -- Si le slot est vide, ajouter l'item
             local transferCount = math.min(item.count, 64)  -- Un slot peut contenir jusqu'à 64 items
             if transferCount > 0 then
-                currentChest.pushItems(peripheral.getName(item.chest), item.slot, transferCount)
+                currentChest.pushItems(chestNames[item.chest], item.slot, transferCount)
                 item.count = item.count - transferCount
             end
         end
