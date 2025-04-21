@@ -1,10 +1,11 @@
+-- Initialisation
 local monitor
 local chests = {}
 local chestNames = {}
 local content = {}
 local scroll = 0
 
--- Lier les périphériques
+-- Liaison des périphériques
 for _, name in ipairs(peripheral.getNames()) do
     local pType = peripheral.getType(name)
     if pType == "monitor" then
@@ -17,7 +18,7 @@ for _, name in ipairs(peripheral.getNames()) do
 end
 
 if not monitor then
-    print("Aucun moniteur trouvé.")
+    print("Aucun moniteur détecté.")
     return
 end
 
@@ -29,7 +30,7 @@ local w, h = monitor.getSize()
 local viewHeight = h
 local maxScroll = 0
 
--- Fusionne et trie les items
+-- Collecte et tri des objets
 local function collectAndSortItems()
     local allItems = {}
 
@@ -53,11 +54,11 @@ local function collectAndSortItems()
     return allItems
 end
 
--- Réorganise les objets entre les coffres
+-- Tri et redistribution des objets
 local function sortAndRedistributeItems()
     local sorted = collectAndSortItems()
 
-    -- Vider tous les coffres (en les transférant vers le premier)
+    -- Vider tous les coffres sauf le premier dans un buffer temporaire (coffre[1])
     for i = 2, #chests do
         local chest = chests[i]
         local items = chest.list()
@@ -66,29 +67,33 @@ local function sortAndRedistributeItems()
         end
     end
 
-    -- Re-distribuer les items triés dans les coffres
-    local targetChest = 1
-    local targetSlot = 1
+    -- Répartir les items depuis le buffer
+    local buffer = chests[1]
+    local bufferName = chestNames[1]
+    local bufferItems = buffer.list()
 
-    for _, item in ipairs(sorted) do
-        -- Extraire depuis le coffre source vers le bon
-        local fromChest = peripheral.wrap(item.chestName)
-        fromChest.pushItems(chestNames[targetChest], item.slot)
+    for slot, item in pairs(bufferItems) do
+        local moved = false
+        for i = 1, #chests do
+            local target = chests[i]
+            local size = peripheral.call(chestNames[i], "size")
+            local targetItems = target.list()
 
-        -- Changer de coffre si le précédent est plein (simpliste)
-        targetSlot = targetSlot + 1
-        if targetSlot > 27 then
-            targetSlot = 1
-            targetChest = targetChest + 1
-            if targetChest > #chests then
-                print("Pas assez d'espace pour tout trier.")
+            if #targetItems < size then
+                buffer.pushItems(chestNames[i], slot)
+                moved = true
                 break
             end
+        end
+
+        if not moved then
+            print("⚠️ Pas assez d’espace pour tout trier.")
+            break
         end
     end
 end
 
--- Met à jour le contenu affiché
+-- Génération de l'affichage
 local function generateContent()
     content = {}
     for i, chest in ipairs(chests) do
@@ -97,12 +102,12 @@ local function generateContent()
         for _, item in pairs(items) do
             table.insert(content, "- " .. item.count .. "x " .. item.name)
         end
-        table.insert(content, "") -- ligne vide
+        table.insert(content, "") -- espace entre coffres
     end
     maxScroll = math.max(0, #content - viewHeight + 1)
 end
 
--- Affiche sur le monitor
+-- Affichage sur le moniteur
 local function draw()
     monitor.clear()
     for i = 1, viewHeight do
@@ -113,7 +118,7 @@ local function draw()
         end
     end
 
-    -- Dessin du slider
+    -- Slider à droite
     local sliderHeight = math.max(1, math.floor(viewHeight * (viewHeight / #content)))
     local sliderPos = math.floor((scroll / maxScroll) * (viewHeight - sliderHeight)) + 1
 
@@ -127,7 +132,7 @@ local function draw()
     end
 end
 
--- Clic tactile sur le slider
+-- Gestion tactile du slider
 local function handleTouch(x, y)
     if x == w then
         local ratio = (y - 1) / (viewHeight - 1)
@@ -136,12 +141,12 @@ local function handleTouch(x, y)
     end
 end
 
--- 🚀 Initialisation
+-- 🟢 Lancement
 sortAndRedistributeItems()
 generateContent()
 draw()
 
--- Boucle événementielle
+-- Boucle de détection tactile
 while true do
     local event, side, x, y = os.pullEvent("monitor_touch")
     handleTouch(x, y)
